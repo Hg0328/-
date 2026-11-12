@@ -77,7 +77,7 @@
   .tblwrap{overflow-x:auto}
 
   /* input */
-  .entry{display:grid;grid-template-columns:1fr 1fr 110px auto;gap:10px;align-items:end}
+  .entry{display:grid;grid-template-columns:120px 110px 1fr 110px auto;gap:10px;align-items:end}
   label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px;font-weight:600}
   input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff;color:var(--ink)}
   input:focus,select:focus{outline:2px solid var(--pink);border-color:var(--pink)}
@@ -92,9 +92,9 @@
 
   /* settings */
   .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
-  .sizes{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
-  .sizes div{font-size:13px}
-  .sizes input{padding:7px 8px}
+  .dots{display:flex;gap:4px;margin:8px 0 6px}
+  .dots i{flex:1;height:7px;border-radius:99px;background:#f3ebe2}
+  .dots i.f{background:var(--pink-d)}
   .formula{background:var(--pink-l);border-radius:12px;padding:12px 14px;font-size:14px;margin-top:14px}
 
   /* modal */
@@ -107,7 +107,7 @@
   @media (max-width:820px){
     .tiles{grid-template-columns:repeat(2,1fr)}
     .split{grid-template-columns:1fr}
-    .entry{grid-template-columns:1fr 1fr}
+    .entry{grid-template-columns:1fr 1fr}.entry>div:nth-child(3){grid-column:1/-1}
     .podium{grid-template-columns:1fr}
     .pod.p1{order:-1}
   }
@@ -149,9 +149,9 @@
         <table id="rankTable">
           <thead><tr>
             <th data-k="rank">순위</th><th data-k="cls">학급</th>
-            <th data-k="people">참여 인원</th><th data-k="rate">참여율</th>
-            <th data-k="laps">총 바퀴</th><th data-k="bonusCount">도장판 2개↑</th>
-            <th data-k="lapScore">바퀴 점수</th><th data-k="rateScore">참여율 점수</th><th data-k="bonusScore">추가 점수</th>
+            <th data-k="people">참여 인원</th><th data-k="partScore">참여 점수</th>
+            <th data-k="laps">총 바퀴</th><th data-k="lapScore">바퀴 점수</th>
+            <th data-k="bonusCount" id="thBonus">도장판 2장↑</th><th data-k="bonusScore">추가 점수</th>
             <th data-k="score">총점</th>
           </tr></thead>
           <tbody></tbody>
@@ -165,12 +165,13 @@
     <div class="card">
       <h2>기록지 입력</h2>
       <form id="entryForm" class="entry" autocomplete="off">
-        <div><label for="fSid">학번 (5자리)</label><input id="fSid" inputmode="numeric" maxlength="5" placeholder="예: 11025" required></div>
-        <div><label for="fName">이름</label><input id="fName" placeholder="이름"></div>
+        <div><label for="fGrade">학년</label><select id="fGrade"><option value="1">1학년</option><option value="2">2학년</option></select></div>
+        <div><label for="fClass">반</label><select id="fClass"></select></div>
+        <div><label for="fName">이름</label><input id="fName" placeholder="이름" required></div>
         <div><label for="fLaps">바퀴 수</label><input id="fLaps" type="number" min="0" step="1" placeholder="도장 수" required></div>
         <div><button class="btn" type="submit">추가 (Enter)</button></div>
       </form>
-      <div class="hint" id="entryHint">학번을 입력하면 학년·반이 자동으로 정해져요. (예: 11025 → 1학년 10반 25번)</div>
+      <div class="hint" id="entryHint"></div>
     </div>
 
     <div class="split">
@@ -179,12 +180,12 @@
           <h2 style="margin:0">입력된 기록 <span class="muted" id="recCount" style="font-size:14px"></span></h2>
           <div class="row" style="gap:8px">
             <select id="recFilter" style="width:auto;padding:7px 10px"></select>
-            <input id="recSearch" placeholder="학번/이름 검색" style="width:150px;padding:7px 10px">
+            <input id="recSearch" placeholder="이름 검색" style="width:130px;padding:7px 10px">
           </div>
         </div>
         <div class="tblwrap" style="max-height:520px;overflow:auto">
           <table id="recTable">
-            <thead><tr><th>학번</th><th>이름</th><th>학급</th><th>바퀴</th><th></th></tr></thead>
+            <thead><tr><th>학급</th><th>이름</th><th>바퀴</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -193,7 +194,7 @@
         <h2>반별 입력 현황</h2>
         <div class="tblwrap" style="max-height:560px;overflow:auto">
           <table id="progTable">
-            <thead><tr><th>학급</th><th></th><th>인원</th><th>바퀴</th></tr></thead>
+            <thead><tr><th>학급</th><th>인원</th><th>바퀴</th><th>총점</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -206,27 +207,14 @@
     <div class="card">
       <h2>점수 계산 방식</h2>
       <div class="sgrid">
-        <div><label>도장판 한 장의 칸 수</label><input type="number" min="1" data-s="boardSize"></div>
+        <div><label>참여 인원 몇 명 단위로</label><input type="number" min="1" step="1" data-s="unitSize"></div>
+        <div><label>한 단위당 참여 점수</label><input type="number" min="0" step="0.1" data-s="unitPoint"></div>
         <div><label>1바퀴당 점수</label><input type="number" min="0" step="0.1" data-s="lapPoint"></div>
-        <div><label>참여율 100%일 때 점수</label><input type="number" min="0" step="0.1" data-s="ratePoint"></div>
-        <div><label>추가 점수 기준 (도장판 몇 장 이상)</label><input type="number" min="1" data-s="bonusBoards"></div>
+        <div><label>도장판 한 장의 칸 수</label><input type="number" min="1" step="1" data-s="boardSize"></div>
+        <div><label>추가 점수 기준 (도장판 몇 장 이상)</label><input type="number" min="1" step="1" data-s="bonusBoards"></div>
         <div><label>기준 달성 1명당 추가 점수</label><input type="number" min="0" step="0.1" data-s="bonusPoint"></div>
       </div>
       <div class="formula" id="formula"></div>
-    </div>
-
-    <div class="card" style="margin-top:16px">
-      <div class="row" style="justify-content:space-between;margin-bottom:10px">
-        <h2 style="margin:0">학급별 재적 인원 <span class="muted" style="font-size:13px;font-weight:500">(참여율 계산용)</span></h2>
-        <div class="row" style="gap:8px">
-          <input type="number" id="bulkSize" min="1" placeholder="일괄" style="width:90px;padding:7px 10px">
-          <button class="btn ghost sm" id="bulkApply">전체 적용</button>
-        </div>
-      </div>
-      <h3 style="font-size:15px;margin:6px 0 8px">1학년</h3>
-      <div class="sizes" id="sizes1"></div>
-      <h3 style="font-size:15px;margin:16px 0 8px">2학년</h3>
-      <div class="sizes" id="sizes2"></div>
     </div>
 
     <div class="card" style="margin-top:16px">
@@ -247,54 +235,46 @@
 
 <script>
 const CLASSES = {1:13, 2:12};           // 학년: 반 수
-const KEY = 'lapChallenge.v1';
+const KEY = 'lapChallenge.v2';
 const PRIZES = ['과자 박스','담요','탐나는전/문화상품권'];
+const DEFAULT_SETTINGS = {unitSize:5, unitPoint:10, lapPoint:1, boardSize:10, bonusBoards:2, bonusPoint:5};
 
-const DEFAULT_SETTINGS = {boardSize:10, lapPoint:1, ratePoint:50, bonusBoards:2, bonusPoint:5, sizes:{}};
 let state = load();
-
 function load(){
   try{
     const s = JSON.parse(localStorage.getItem(KEY));
-    if(s && Array.isArray(s.records)) return {records:s.records, settings:{...DEFAULT_SETTINGS,...s.settings, sizes:{...(s.settings||{}).sizes}}, updated:s.updated};
+    if(s && Array.isArray(s.records)) return {records:s.records, settings:{...DEFAULT_SETTINGS,...s.settings}, updated:s.updated};
   }catch(e){}
-  return {records:[], settings:structuredClone(DEFAULT_SETTINGS), updated:null};
+  return {records:[], settings:{...DEFAULT_SETTINGS}, updated:null};
 }
 function save(){
   state.updated = new Date().toISOString();
   try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ toast('저장 실패: 브라우저 저장소를 쓸 수 없어요'); }
   render();
 }
-const ckey = (g,c)=>`${g}-${c}`;
-const clsName = (g,c)=>`${g}-${c}`;
-const sizeOf = (g,c)=> Number(state.settings.sizes[ckey(g,c)]) || 0;
 const fmt = n => (Math.round(n*10)/10).toLocaleString('ko-KR');
-
-function parseSid(sid){
-  if(!/^\d{5}$/.test(sid)) return {err:'학번은 숫자 5자리로 입력해 주세요.'};
-  const g = +sid[0], c = +sid.slice(1,3), n = +sid.slice(3);
-  if(!CLASSES[g]) return {err:`${g}학년은 집계 대상이 아니에요 (1·2학년만).`};
-  if(c<1 || c>CLASSES[g]) return {err:`${g}학년은 1~${CLASSES[g]}반까지 있어요.`};
-  if(n<1) return {err:'번호가 올바르지 않아요.'};
-  return {g,c,n};
-}
+const esc = s => String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const validClass = (g,c)=> !!CLASSES[g] && c>=1 && c<=CLASSES[g];
+const normName = s => String(s||'').replace(/\s+/g,'').trim();
+const findRec = (g,c,name)=> state.records.find(r=>r.g===g && r.c===c && r.name===name);
+const newId = ()=> (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random());
 
 /* ---------- 집계 ---------- */
 function compute(){
-  const S = state.settings, perBoard = Math.max(1, +S.boardSize||1);
+  const S = state.settings;
+  const unit = Math.max(1, +S.unitSize||1), perBoard = Math.max(1, +S.boardSize||1), need = (+S.bonusBoards||2)*perBoard;
   const rows = [];
   for(const g of [1,2]) for(let c=1;c<=CLASSES[g];c++){
     const recs = state.records.filter(r=>r.g===g && r.c===c);
     const people = recs.length;
     const laps = recs.reduce((a,r)=>a+r.laps,0);
-    const bonusCount = recs.filter(r=> Math.floor(r.laps/perBoard) >= (+S.bonusBoards||2)).length;
-    const size = sizeOf(g,c);
-    const rate = size ? Math.min(1, people/size) : 0;
+    const bonusCount = recs.filter(r=>r.laps>=need).length;
+    const units = Math.floor(people/unit);
+    const partScore = units*(+S.unitPoint||0);
     const lapScore = laps*(+S.lapPoint||0);
-    const rateScore = rate*(+S.ratePoint||0);
     const bonusScore = bonusCount*(+S.bonusPoint||0);
-    rows.push({g,c,cls:clsName(g,c),people,laps,bonusCount,size,rate,lapScore,rateScore,bonusScore,
-      score:Math.round((lapScore+rateScore+bonusScore)*10)/10});
+    rows.push({g,c,cls:`${g}-${c}`,people,laps,bonusCount,units,toNext:unit-(people%unit),
+      partScore,lapScore,bonusScore,score:Math.round((partScore+lapScore+bonusScore)*10)/10});
   }
   return rows;
 }
@@ -304,47 +284,48 @@ function rankRows(rows){
   sorted.forEach((r,i)=>{ if(prev===null || r.score!==prev) rank=i+1; r.rank=rank; prev=r.score; });
   return sorted;
 }
+const dots = r => { const u=Math.max(1,+state.settings.unitSize||1), f=r.people%u; return `<div class="dots" title="다음 참여 점수까지 ${r.toNext}명">${Array.from({length:u},(_,i)=>`<i class="${i<f?'f':''}"></i>`).join('')}</div>`; };
 
 /* ---------- 순위 화면 ---------- */
 let gFilter='all', sortKey='rank', sortAsc=true;
 function renderBoard(){
-  const all = compute();
-  const rankedAll = rankRows(all);              // 전체 순위 (학년 통합)
-  const view = gFilter==='all' ? rankedAll : rankRows(all.filter(r=>r.g==gFilter));
+  const S=state.settings, all = compute();
+  const view = rankRows(gFilter==='all' ? all : all.filter(r=>r.g==gFilter));
   const rankMap = Object.fromEntries(view.map(r=>[r.cls,r.rank]));
 
   const people = view.reduce((a,r)=>a+r.people,0), laps = view.reduce((a,r)=>a+r.laps,0);
-  const size = view.reduce((a,r)=>a+r.size,0), bonus = view.reduce((a,r)=>a+r.bonusCount,0);
+  const joined = view.filter(r=>r.people>0).length, bonus = view.reduce((a,r)=>a+r.bonusCount,0);
   document.getElementById('tiles').innerHTML = `
     <div class="tile"><div class="k">총 참여 인원</div><div class="v">${people.toLocaleString()}<small>명</small></div></div>
-    <div class="tile"><div class="k">전체 참여율</div><div class="v">${size?Math.round(people/size*100):'–'}<small>${size?'%':''}</small></div></div>
     <div class="tile"><div class="k">총 바퀴 수</div><div class="v">${laps.toLocaleString()}<small>바퀴</small></div></div>
-    <div class="tile"><div class="k">도장판 ${state.settings.bonusBoards}장↑ 채운 사람</div><div class="v">${bonus}<small>명</small></div></div>`;
+    <div class="tile"><div class="k">참여한 학급</div><div class="v">${joined}<small>/ ${view.length}반</small></div></div>
+    <div class="tile"><div class="k">도장판 ${S.bonusBoards}장↑ 채운 사람</div><div class="v">${bonus}<small>명</small></div></div>`;
+  document.getElementById('thBonus').textContent = `도장판 ${S.bonusBoards}장↑`;
 
   const top = view.filter(r=>r.score>0).slice(0,3);
-  const medalColors=['var(--gold)','var(--silver)','var(--bronze)'];
+  const medal=['var(--gold)','var(--silver)','var(--bronze)'];
   const pod = i => {
     const r = top[i];
     if(!r) return `<div class="pod empty p${i+1}"><div class="medal" style="background:#e8ddd2">${i+1}</div><div class="cls">–</div><div class="sc">기록 대기 중</div></div>`;
-    return `<div class="pod p${i+1}"><div class="medal" style="background:${medalColors[r.rank-1]||'#ccc'}">${r.rank}</div>
+    return `<div class="pod p${i+1}"><div class="medal" style="background:${medal[r.rank-1]||'#ccc'}">${r.rank}</div>
       <div class="cls">${r.g}학년 ${r.c}반</div><div class="sc"><b style="color:var(--pink-d)">${fmt(r.score)}점</b> · ${r.people}명 · ${r.laps}바퀴</div>
-      ${r.rank<=3?`<div class="prize">${PRIZES[r.rank-1]}</div>`:''}</div>`;
+      <div class="prize">${PRIZES[r.rank-1]}</div></div>`;
   };
   document.getElementById('podium').innerHTML = pod(1)+pod(0)+pod(2);
 
   const grades = gFilter==='all'?[1,2]:[+gFilter];
   document.getElementById('classGrids').innerHTML = grades.map(g=>{
     const rows = all.filter(r=>r.g===g);
-    const gp = rows.reduce((a,r)=>a+r.people,0), gs = rows.reduce((a,r)=>a+r.size,0);
-    return `<div class="gradeHead"><h3>${g}학년</h3><span class="muted" style="font-size:13px">참여 ${gp}명${gs?` / ${gs}명 (${Math.round(gp/gs*100)}%)`:''}</span></div>
+    const gp = rows.reduce((a,r)=>a+r.people,0), gl = rows.reduce((a,r)=>a+r.laps,0);
+    return `<div class="gradeHead"><h3>${g}학년</h3><span class="muted" style="font-size:13px">참여 ${gp}명 · ${gl}바퀴</span></div>
     <div class="grid">${rows.map(r=>{
       const rk = rankMap[r.cls];
-      return `<div class="cc" data-cls="${r.g}-${r.c}">
+      return `<div class="cc" data-cls="${r.cls}">
         <div class="top"><span class="name">${r.c}반</span><span class="rk ${r.score>0&&rk<=3?'r'+rk:''}">${r.score>0?rk+'위':'–'}</span></div>
-        <div class="ppl">${r.people}<small>${r.size?` / ${r.size}명`:'명'}</small></div>
-        <div class="bar"><i style="width:${(r.rate*100).toFixed(1)}%"></i></div>
-        <div class="meta"><span>참여율 <b>${r.size?Math.round(r.rate*100)+'%':'–'}</b></span><span><b>${r.laps}</b>바퀴</span></div>
-        <div class="meta" style="margin-top:2px"><span>총점</span><b style="color:var(--pink-d)">${fmt(r.score)}점</b></div>
+        <div class="ppl">${r.people}<small>명 참여</small></div>
+        ${dots(r)}
+        <div class="meta"><span>참여 점수 <b>${fmt(r.partScore)}</b> <span style="font-size:12px">(+${r.toNext}명)</span></span></div>
+        <div class="meta" style="margin-top:2px"><span><b>${r.laps}</b>바퀴</span><b style="color:var(--pink-d)">${fmt(r.score)}점</b></div>
       </div>`;}).join('')}</div>`;
   }).join('');
 
@@ -355,15 +336,45 @@ function renderBoard(){
   });
   document.querySelector('#rankTable tbody').innerHTML = tb.map(r=>`<tr>
     <td>${r.score>0?r.rank:'–'}</td><td>${r.g}학년 ${r.c}반</td>
-    <td>${r.people}${r.size?` / ${r.size}`:''}</td><td>${r.size?(r.rate*100).toFixed(1)+'%':'재적 미입력'}</td>
-    <td>${r.laps}</td><td>${r.bonusCount}</td>
-    <td>${fmt(r.lapScore)}</td><td>${fmt(r.rateScore)}</td><td>${fmt(r.bonusScore)}</td>
+    <td>${r.people}</td><td>${fmt(r.partScore)}</td>
+    <td>${r.laps}</td><td>${fmt(r.lapScore)}</td>
+    <td>${r.bonusCount}</td><td>${fmt(r.bonusScore)}</td>
     <td class="score">${fmt(r.score)}</td></tr>`).join('');
 
   document.getElementById('updated').textContent = state.updated ? '마지막 수정 '+new Date(state.updated).toLocaleString('ko-KR') : '';
 }
 
 /* ---------- 입력 화면 ---------- */
+const fGrade=document.getElementById('fGrade'), fClass=document.getElementById('fClass'),
+      fName=document.getElementById('fName'), fLaps=document.getElementById('fLaps'), hint=document.getElementById('entryHint');
+const DEFAULT_HINT='학년·반은 입력 후에도 그대로 유지돼요. 같은 반 기록지는 이름과 바퀴 수만 이어서 넣으면 돼요.';
+function fillClassOptions(){
+  const g=+fGrade.value, keep=+fClass.value||1;
+  fClass.innerHTML=Array.from({length:CLASSES[g]},(_,i)=>`<option value="${i+1}">${i+1}반</option>`).join('');
+  fClass.value=String(Math.min(keep,CLASSES[g]));
+}
+fGrade.addEventListener('change',()=>{ fillClassOptions(); updateHint(); });
+fClass.addEventListener('change',updateHint);
+fName.addEventListener('input',updateHint);
+function updateHint(){
+  const g=+fGrade.value, c=+fClass.value, name=normName(fName.value);
+  const ex = name && findRec(g,c,name);
+  hint.className = ex?'hint ok':'hint';
+  hint.textContent = ex ? `${g}학년 ${c}반 ${name}: 이미 ${ex.laps}바퀴 기록돼 있어요. 추가하면 합산돼요.` : DEFAULT_HINT;
+}
+document.getElementById('entryForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const g=+fGrade.value, c=+fClass.value, name=normName(fName.value), laps=parseInt(fLaps.value,10);
+  if(!validClass(g,c)){ hint.className='hint err'; hint.textContent='학년·반을 확인해 주세요.'; return; }
+  if(!name){ hint.className='hint err'; hint.textContent='이름을 입력해 주세요.'; fName.focus(); return; }
+  if(!(laps>=0)){ hint.className='hint err'; hint.textContent='바퀴 수를 입력해 주세요.'; fLaps.focus(); return; }
+  const ex = findRec(g,c,name);
+  if(ex){ ex.laps += laps; ex.ts=Date.now(); toast(`${g}-${c} ${name} 합산 → 총 ${ex.laps}바퀴`); }
+  else { state.records.push({id:newId(),g,c,name,laps,ts:Date.now()}); toast(`${g}학년 ${c}반 ${name} ${laps}바퀴 추가`); }
+  save();
+  fName.value=''; fLaps.value=''; updateHint(); fName.focus();
+});
+
 function renderInput(){
   const f = document.getElementById('recFilter'), cur = f.value || 'all';
   if(!f.options.length){
@@ -372,66 +383,29 @@ function renderInput(){
     f.innerHTML=h;
   }
   f.value=cur;
-  const q = document.getElementById('recSearch').value.trim();
+  const q = normName(document.getElementById('recSearch').value);
   let recs = [...state.records].sort((a,b)=>b.ts-a.ts);
-  if(cur!=='all') recs = recs.filter(r=>`${r.g}-${r.c}`===cur).sort((a,b)=>a.sid.localeCompare(b.sid));
-  if(q) recs = recs.filter(r=>r.sid.includes(q)||(r.name||'').includes(q));
+  if(cur!=='all') recs = recs.filter(r=>`${r.g}-${r.c}`===cur).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  if(q) recs = recs.filter(r=>r.name.includes(q));
   document.getElementById('recCount').textContent = `(${recs.length}건)`;
   document.querySelector('#recTable tbody').innerHTML = recs.length ? recs.map(r=>`<tr>
-    <td>${r.sid}</td><td>${esc(r.name||'')}</td><td>${r.g}-${r.c}</td>
+    <td>${r.g}-${r.c}</td><td>${esc(r.name)}</td>
     <td><input type="number" min="0" value="${r.laps}" data-edit="${r.id}"></td>
     <td><button class="btn danger sm" data-del="${r.id}">삭제</button></td></tr>`).join('')
-    : `<tr><td colspan="5" class="muted" style="text-align:center;padding:24px">아직 입력된 기록이 없어요</td></tr>`;
+    : `<tr><td colspan="4" class="muted" style="text-align:center;padding:24px">아직 입력된 기록이 없어요</td></tr>`;
 
-  const rows = compute();
-  const maxP = Math.max(1,...rows.map(r=>Math.max(r.people,r.size)));
-  document.querySelector('#progTable tbody').innerHTML = rows.map(r=>`<tr>
-    <td>${r.g}-${r.c}</td>
-    <td style="width:45%"><div class="bar" style="margin:0"><i style="width:${(r.size? r.rate : r.people/maxP)*100}%"></i></div></td>
-    <td>${r.people}${r.size?`/${r.size}`:''}</td><td>${r.laps}</td></tr>`).join('');
+  document.querySelector('#progTable tbody').innerHTML = compute().map(r=>`<tr>
+    <td>${r.g}-${r.c}</td><td>${r.people}</td><td>${r.laps}</td><td>${fmt(r.score)}</td></tr>`).join('');
 }
-const esc = s => s.replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-
-const fSid=document.getElementById('fSid'), fName=document.getElementById('fName'), fLaps=document.getElementById('fLaps'), hint=document.getElementById('entryHint');
-fSid.addEventListener('input',()=>{
-  fSid.value=fSid.value.replace(/\D/g,'');
-  if(fSid.value.length<5){ hint.className='hint'; hint.textContent='학번을 입력하면 학년·반이 자동으로 정해져요. (예: 11025 → 1학년 10반 25번)'; return; }
-  const p=parseSid(fSid.value);
-  if(p.err){ hint.className='hint err'; hint.textContent=p.err; return; }
-  const ex = state.records.find(r=>r.sid===fSid.value);
-  hint.className='hint ok';
-  hint.textContent=`${p.g}학년 ${p.c}반 ${p.n}번` + (ex?` · 이미 ${ex.laps}바퀴 기록됨 (추가하면 합산돼요)`:'');
-  if(ex && !fName.value) fName.value = ex.name||'';
-});
-document.getElementById('entryForm').addEventListener('submit',e=>{
-  e.preventDefault();
-  const sid=fSid.value.trim(), p=parseSid(sid), laps=parseInt(fLaps.value,10);
-  if(p.err){ hint.className='hint err'; hint.textContent=p.err; fSid.focus(); return; }
-  if(!(laps>=0)){ hint.className='hint err'; hint.textContent='바퀴 수를 입력해 주세요.'; fLaps.focus(); return; }
-  const ex = state.records.find(r=>r.sid===sid);
-  if(ex){
-    ex.laps += laps; ex.ts=Date.now(); if(fName.value.trim()) ex.name=fName.value.trim();
-    toast(`${sid} ${ex.name||''} 기록지 합산 → 총 ${ex.laps}바퀴`);
-  }else{
-    state.records.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),sid,name:fName.value.trim(),laps,g:p.g,c:p.c,ts:Date.now()});
-    toast(`${p.g}학년 ${p.c}반 · ${fName.value.trim()||sid} ${laps}바퀴 추가`);
-  }
-  save();
-  fSid.value=''; fName.value=''; fLaps.value=''; hint.className='hint'; hint.textContent='저장됐어요. 다음 기록지를 입력하세요.';
-  fSid.focus();
-});
-// 학번 5자리 입력 시 다음 칸으로
-fSid.addEventListener('keyup',()=>{ if(fSid.value.length===5 && !parseSid(fSid.value).err && document.activeElement===fSid) fName.focus(); });
-
 document.querySelector('#recTable').addEventListener('change',e=>{
   const id=e.target.dataset.edit; if(!id) return;
   const r=state.records.find(x=>x.id===id), v=parseInt(e.target.value,10);
-  if(r && v>=0){ r.laps=v; save(); toast(`${r.sid} → ${v}바퀴로 수정`); }
+  if(r && v>=0){ r.laps=v; save(); toast(`${r.g}-${r.c} ${r.name} → ${v}바퀴로 수정`); }
 });
 document.querySelector('#recTable').addEventListener('click',e=>{
   const id=e.target.dataset.del; if(!id) return;
   const r=state.records.find(x=>x.id===id);
-  confirmBox(`${r.sid} ${esc(r.name||'')} 기록(${r.laps}바퀴)을 삭제할까요?`,()=>{ state.records=state.records.filter(x=>x.id!==id); save(); toast('삭제했어요'); });
+  confirmBox(`${r.g}학년 ${r.c}반 ${esc(r.name)} 기록(${r.laps}바퀴)을 삭제할까요?`,()=>{ state.records=state.records.filter(x=>x.id!==id); save(); toast('삭제했어요'); });
 });
 document.getElementById('recFilter').addEventListener('change',renderInput);
 document.getElementById('recSearch').addEventListener('input',renderInput);
@@ -440,38 +414,30 @@ document.getElementById('recSearch').addEventListener('input',renderInput);
 function renderSettings(){
   const S=state.settings;
   document.querySelectorAll('[data-s]').forEach(i=>{ if(document.activeElement!==i) i.value=S[i.dataset.s]; });
-  for(const g of [1,2]){
-    const box=document.getElementById('sizes'+g);
-    if(!box.children.length){
-      box.innerHTML=Array.from({length:CLASSES[g]},(_,i)=>`<div><label>${i+1}반</label><input type="number" min="0" data-size="${g}-${i+1}" placeholder="명"></div>`).join('');
-    }
-  }
-  document.querySelectorAll('[data-size]').forEach(i=>{ if(document.activeElement!==i) i.value=S.sizes[i.dataset.size]||''; });
+  const need=S.bonusBoards*S.boardSize;
+  const ex = {people:13, laps:150, bonus:3};
+  const exPart=Math.floor(ex.people/S.unitSize)*S.unitPoint;
   document.getElementById('formula').innerHTML =
-    `<b>학급 총점</b> = 총 바퀴 × ${S.lapPoint}점 + 참여율 × ${S.ratePoint}점 + (도장판 ${S.bonusBoards}장 = ${S.bonusBoards*S.boardSize}바퀴 이상 돈 사람 수) × ${S.bonusPoint}점
-     <div class="muted" style="font-size:13px;margin-top:4px">예) 재적 30명 중 20명이 참여해 총 150바퀴, 그중 3명이 ${S.bonusBoards*S.boardSize}바퀴 이상 → ${fmt(150*S.lapPoint)} + ${fmt(20/30*S.ratePoint)} + ${fmt(3*S.bonusPoint)} = <b>${fmt(150*S.lapPoint+20/30*S.ratePoint+3*S.bonusPoint)}점</b></div>`;
+    `<b>학급 총점</b> = (참여 인원 ÷ ${S.unitSize}명, 나머지 버림) × ${S.unitPoint}점 + 총 바퀴 × ${S.lapPoint}점 + (${need}바퀴 이상 돈 사람 수) × ${S.bonusPoint}점
+     <div class="muted" style="font-size:13px;margin-top:4px">예) ${ex.people}명 참여, 총 ${ex.laps}바퀴, ${need}바퀴 이상 ${ex.bonus}명 → ${fmt(exPart)} + ${fmt(ex.laps*S.lapPoint)} + ${fmt(ex.bonus*S.bonusPoint)} = <b>${fmt(exPart+ex.laps*S.lapPoint+ex.bonus*S.bonusPoint)}점</b>
+     (${ex.people}명은 ${S.unitSize}명 단위 ${Math.floor(ex.people/S.unitSize)}개)</div>`;
 }
 document.getElementById('tab-settings').addEventListener('change',e=>{
-  const t=e.target;
-  if(t.dataset.s){ const v=parseFloat(t.value); if(v>=0){ state.settings[t.dataset.s]=v; save(); } }
-  if(t.dataset.size){ const v=parseInt(t.value,10); if(v>0) state.settings.sizes[t.dataset.size]=v; else delete state.settings.sizes[t.dataset.size]; save(); }
+  const t=e.target; if(!t.dataset.s) return;
+  const v=parseFloat(t.value);
+  const min = ['unitSize','boardSize','bonusBoards'].includes(t.dataset.s) ? 1 : 0;
+  if(v>=min){ state.settings[t.dataset.s]=v; save(); } else renderSettings();
 });
-document.getElementById('bulkApply').onclick=()=>{
-  const v=parseInt(document.getElementById('bulkSize').value,10);
-  if(!(v>0)) return toast('인원을 입력해 주세요');
-  for(const g of [1,2]) for(let c=1;c<=CLASSES[g];c++) state.settings.sizes[ckey(g,c)]=v;
-  save(); toast(`모든 학급 재적 ${v}명으로 설정`);
-};
 function download(name,text,type){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 const stamp=()=>new Date().toISOString().slice(0,16).replace(/[-:T]/g,'');
 document.getElementById('exportJson').onclick=()=>download(`바퀴수챌린지_백업_${stamp()}.json`,JSON.stringify(state,null,1),'application/json');
 document.getElementById('exportCsv').onclick=()=>{
-  const rows=rankRows(compute());
-  const head='순위,학년,반,참여 인원,재적,참여율(%),총 바퀴,도장판기준달성,바퀴 점수,참여율 점수,추가 점수,총점';
-  const body=rows.map(r=>[r.score>0?r.rank:'',r.g,r.c,r.people,r.size||'',r.size?(r.rate*100).toFixed(1):'',r.laps,r.bonusCount,fmt(r.lapScore).replace(/,/g,''),fmt(r.rateScore).replace(/,/g,''),fmt(r.bonusScore).replace(/,/g,''),r.score].join(','));
-  const recs=['','학번,이름,학년,반,바퀴',...[...state.records].sort((a,b)=>a.sid.localeCompare(b.sid)).map(r=>[r.sid,`"${(r.name||'').replace(/"/g,'""')}"`,r.g,r.c,r.laps].join(','))];
+  const n=x=>fmt(x).replace(/,/g,'');
+  const head='순위,학년,반,참여 인원,참여 점수,총 바퀴,바퀴 점수,도장판 기준 달성,추가 점수,총점';
+  const body=rankRows(compute()).map(r=>[r.score>0?r.rank:'',r.g,r.c,r.people,n(r.partScore),r.laps,n(r.lapScore),r.bonusCount,n(r.bonusScore),r.score].join(','));
+  const recs=['','학년,반,이름,바퀴',...[...state.records].sort((a,b)=>a.g-b.g||a.c-b.c||a.name.localeCompare(b.name,'ko')).map(r=>[r.g,r.c,`"${r.name.replace(/"/g,'""')}"`,r.laps].join(','))];
   download(`바퀴수챌린지_결과_${stamp()}.csv`,'﻿'+[head,...body,...recs].join('\n'),'text/csv');
 };
 document.getElementById('importJson').onchange=async e=>{
@@ -479,20 +445,20 @@ document.getElementById('importJson').onchange=async e=>{
   try{
     const data=JSON.parse(await file.text());
     if(!Array.isArray(data.records)) throw 0;
-    let added=0, merged=0;
+    let added=0, merged=0, skipped=0;
     for(const r of data.records){
-      const p=parseSid(String(r.sid)); if(p.err) continue;
-      const laps=Math.max(0,parseInt(r.laps,10)||0);
-      const ex=state.records.find(x=>x.sid===String(r.sid));
-      if(ex){ if(ex.id===r.id) continue; ex.laps+=laps; merged++; }
-      else { state.records.push({id:r.id||String(Math.random()),sid:String(r.sid),name:String(r.name||''),laps,g:p.g,c:p.c,ts:r.ts||Date.now()}); added++; }
+      const g=+r.g, c=+r.c, name=normName(r.name), laps=Math.max(0,parseInt(r.laps,10)||0);
+      if(!validClass(g,c) || !name){ skipped++; continue; }
+      if(state.records.some(x=>x.id===r.id)){ skipped++; continue; }   // 이미 불러온 기록
+      const ex=findRec(g,c,name);
+      if(ex){ ex.laps+=laps; merged++; }
+      else { state.records.push({id:r.id||newId(),g,c,name,laps,ts:r.ts||Date.now()}); added++; }
     }
-    if(data.settings && data.settings.sizes && Object.keys(state.settings.sizes).length===0) state.settings.sizes={...data.settings.sizes};
-    save(); toast(`새 기록 ${added}건 추가, 같은 학번 ${merged}건 합산`);
+    save(); toast(`새 기록 ${added}건, 같은 이름 합산 ${merged}건${skipped?`, 건너뜀 ${skipped}건`:''}`);
   }catch(err){ toast('백업 파일을 읽을 수 없어요'); }
   e.target.value='';
 };
-document.getElementById('resetAll').onclick=()=>confirmBox('입력한 기록을 모두 지울까요? (점수 설정과 재적 인원은 유지돼요)<br><span class="muted">지우기 전에 백업 파일을 저장해 두는 걸 권장해요.</span>',()=>{ state.records=[]; save(); toast('기록을 모두 지웠어요'); });
+document.getElementById('resetAll').onclick=()=>confirmBox('입력한 기록을 모두 지울까요? (점수 설정은 유지돼요)<br><span class="muted">지우기 전에 백업 파일을 저장해 두는 걸 권장해요.</span>',()=>{ state.records=[]; save(); toast('기록을 모두 지웠어요'); });
 
 /* ---------- 학급 상세 ---------- */
 document.getElementById('classGrids').addEventListener('click',e=>{
@@ -502,9 +468,10 @@ document.getElementById('classGrids').addEventListener('click',e=>{
   const recs=state.records.filter(x=>x.g===g&&x.c===c).sort((a,b)=>b.laps-a.laps);
   const need=state.settings.bonusBoards*state.settings.boardSize;
   openModal(`<div class="row" style="justify-content:space-between"><h2 style="margin:0">${g}학년 ${c}반</h2><button class="btn ghost sm" data-close>닫기</button></div>
-    <p class="muted" style="margin:6px 0 12px">참여 ${r.people}명${r.size?` / ${r.size}명 (${Math.round(r.rate*100)}%)`:''} · 총 ${r.laps}바퀴 · <b style="color:var(--pink-d)">${fmt(r.score)}점</b></p>
-    <table><thead><tr><th>학번</th><th>이름</th><th>바퀴</th></tr></thead><tbody>
-    ${recs.length?recs.map(x=>`<tr><td>${x.sid}</td><td style="text-align:left">${esc(x.name||'')} ${x.laps>=need?'<span class="prize" style="font-size:11px;padding:1px 6px;background:var(--pink-l);color:var(--pink-d);border-radius:99px">추가점수</span>':''}</td><td>${x.laps}</td></tr>`).join(''):'<tr><td colspan="3" class="muted" style="text-align:center">기록 없음</td></tr>'}
+    <p class="muted" style="margin:6px 0 12px">참여 ${r.people}명 · 총 ${r.laps}바퀴 · <b style="color:var(--pink-d)">${fmt(r.score)}점</b>
+    <br>참여 ${fmt(r.partScore)} + 바퀴 ${fmt(r.lapScore)} + 추가 ${fmt(r.bonusScore)} · 다음 참여 점수까지 ${r.toNext}명</p>
+    <table><thead><tr><th>#</th><th>이름</th><th>바퀴</th></tr></thead><tbody>
+    ${recs.length?recs.map((x,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${esc(x.name)} ${x.laps>=need?'<span style="font-size:11px;padding:1px 6px;background:var(--pink-l);color:var(--pink-d);border-radius:99px;font-weight:600">추가점수</span>':''}</td><td>${x.laps}</td></tr>`).join(''):'<tr><td colspan="3" class="muted" style="text-align:center">기록 없음</td></tr>'}
     </tbody></table>`);
 });
 
@@ -522,7 +489,7 @@ let tt; function toast(m){ const t=document.getElementById('toast'); t.textConte
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='tab-'+b.dataset.tab));
-  if(b.dataset.tab==='input') setTimeout(()=>fSid.focus(),0);
+  if(b.dataset.tab==='input') setTimeout(()=>fName.focus(),0);
 });
 document.querySelectorAll('#gradeFilter button').forEach(b=>b.onclick=()=>{
   gFilter=b.dataset.g; document.querySelectorAll('#gradeFilter button').forEach(x=>x.classList.toggle('on',x===b)); renderBoard();
@@ -533,7 +500,7 @@ document.querySelectorAll('#rankTable th').forEach(th=>th.onclick=()=>{
 window.addEventListener('storage',e=>{ if(e.key===KEY){ state=load(); render(); } });
 
 function render(){ renderBoard(); renderInput(); renderSettings(); }
-render();
+fillClassOptions(); updateHint(); render();
 </script>
 </body>
 </html>
